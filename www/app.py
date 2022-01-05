@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 # 通过logging.basicConfig函数对日志的输出格式及方式做相关配置,日志的输出等级是INFO，意思是INFO级别以上的日志才会输出。
 import logging; logging.basicConfig(level=logging.INFO)
 
