@@ -106,16 +106,17 @@ def datetime_filter(t):
     return u'%s年%s月%s日' % (dt.year, dt.month, dt.day)
 # day5新增内容到此为止
 
-# 此函数作用为处理URL
-def index(request):
-    return web.Response(body=b'<h1>My Blog</h1>',content_type='text/html') #构造一个HTTP响应
-
 # @asyncio.coroutine 在版本3已经改成async def的格式，更加简便
 async def init(loop):
+    await orm.create_pool(loop=loop, host='127.0.0.1', port=3306, user='root', password='ann2008123', db='myworld')
     # 创建Web服务器实例app，也就是aiohttp.web.Application类的实例，该实例的作用是处理URL、HTTP协议
-    app = web.Application(loop=loop)
+    app = web.Application(loop=loop, middlewares=[
+        logger_factory, response_factory
+    ])
+    init_jinja2(app, filters=dict(datetime=datetime_filter))
     # 将处理函数注册进其应用路径(Application.router)
-    app.router.add_route('GET', '/', index)
+    add_routes(app, 'handlers')
+    add_static(app)
     # 用协程创建监听服务，并使用aiohttp中的HTTP协议簇(protocol_factory)
     srv = await loop.create_server(app.make_handler(), '127.0.0.1', 9000)
     # 日志输出
