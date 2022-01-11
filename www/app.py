@@ -13,6 +13,12 @@ from jinja2 import Environment, FileSystemLoader
 import orm
 from coroweb import add_routes, add_static
 
+# day8增加内容
+from config import configs
+
+# day10增加内容
+from handlers import cookie2user, COOKIE_NAME
+
 # day5增加内容
 def init_jinja2(app, **kw):
     logging.info('init jinja2...')
@@ -41,6 +47,24 @@ async def logger_factory(app, handler):
         # await asyncio.sleep(0.3)
         return (await handler(request))
     return logger
+
+# 第十天新增内容
+# 利用middle在处理URL之前，把cookie解析出来，并将登录用户绑定到request对象上，这样，后续的URL处理函数就可以直接拿到登录用户
+async def auth_factory(app, handler):
+    async def auth(request):
+        logging.info('check user: %s %s' % (request.method, request.path))
+        request.__user__ = None
+        cookie_str = request.cookies.get(COOKIE_NAME)
+        if cookie_str:
+            user = await cookie2user(cookie_str)
+            if user:
+                logging.info('set current user: %s' % user.email)
+                request.__user__ = user
+        if request.path.startswith('/manage/') and (request.__user__ is None or not request.__user__.admin):
+            return web.HTTPFound('/signin')
+        return (await handler(request))
+    return auth
+# 第十天新增内容到此为止
 
 async def data_factory(app, handler):
     async def parse_data(request):
@@ -107,11 +131,12 @@ def datetime_filter(t):
 # day5新增内容到此为止
 
 # @asyncio.coroutine 在版本3已经改成async def的格式，更加简便
+# 第八天修改相关内容**configs.db、auth_factory
 async def init(loop):
-    await orm.create_pool(loop=loop, host='127.0.0.1', port=3306, user='root', password='ann2008123', db='myworld')
+    await orm.create_pool(loop=loop, **configs.db)
     # 创建Web服务器实例app，也就是aiohttp.web.Application类的实例，该实例的作用是处理URL、HTTP协议
     app = web.Application(loop=loop, middlewares=[
-        logger_factory, response_factory
+        logger_factory, response_factory, auth_factory
     ])
     init_jinja2(app, filters=dict(datetime=datetime_filter))
     # 将处理函数注册进其应用路径(Application.router)
